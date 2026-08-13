@@ -28,11 +28,17 @@ api-gen: ## Generate code from OpenAPI specifications
 	@for service in product cart order payment inventory; do \
 		if [ -f services/$$service/api/openapi.yaml ]; then \
 			echo "Generating code for $$service..."; \
-			oapi-codegen -generate types,chi-server -package api \
-				services/$$service/api/openapi.yaml > services/$$service/internal/adapters/http/generated.go; \
+			$$(go env GOPATH)/bin/oapi-codegen -package api -generate types,chi-server \
+				services/$$service/api/openapi.yaml > services/$$service/internal/adapters/http/generated.go || exit 1; \
 		fi \
 	done
 	@echo "API code generated successfully!"
+
+api-gen-product: ## Generate code for product service only
+	@echo "Generating API code for product service..."
+	@$$(go env GOPATH)/bin/oapi-codegen -package api -generate types,chi-server \
+		services/product/api/openapi.yaml > services/product/internal/adapters/http/generated.go
+	@echo "Product API code generated!"
 
 api-lint: ## Lint OpenAPI specifications
 	@echo "Linting OpenAPI specs..."
@@ -45,6 +51,10 @@ api-lint: ## Lint OpenAPI specifications
 test: ## Run all tests
 	@echo "Running tests..."
 	go test ./... -v -race -coverprofile=coverage.out
+
+test-product: ## Run product service tests only
+	@echo "Running product service tests..."
+	go test gocommerce/services/product/... -v -race
 
 test-coverage: test ## Run tests and show coverage
 	go tool cover -html=coverage.out
@@ -66,15 +76,24 @@ lint-fix: ## Run linters and auto-fix issues
 # Build
 build: ## Build all services
 	@echo "Building all services..."
+	@mkdir -p bin
 	@for service in gateway product cart order payment inventory notification; do \
-		echo "Building $$service..."; \
-		cd services/$$service && go build -o ../../bin/$$service ./cmd/server && cd ../..; \
+		if [ -f services/$$service/cmd/server/main.go ]; then \
+			echo "Building $$service..."; \
+			go build -o bin/$$service gocommerce/services/$$service/cmd/server; \
+		fi \
 	done
 	@echo "Build complete!"
 
 build-service: ## Build a specific service (usage: make build-service SERVICE=product)
 	@echo "Building $(SERVICE)..."
-	cd services/$(SERVICE) && go build -o ../../bin/$(SERVICE) ./cmd/server
+	@mkdir -p bin
+	@go build -o bin/$(SERVICE) gocommerce/services/$(SERVICE)/cmd/server
+
+build-product: ## Build product service
+	@echo "Building product service..."
+	@mkdir -p bin
+	@go build -o bin/product gocommerce/services/product/cmd/server
 
 # Clean
 clean: ## Clean build artifacts and generated files
@@ -159,9 +178,8 @@ docs: ## Generate documentation
 install-tools: ## Install development tools
 	@echo "Installing development tools..."
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/bufbuild/buf/cmd/buf@latest
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+	go install github.com/pressly/goose/v3/cmd/goose@latest
 	@echo "Tools installed!"
 
 # Quick start

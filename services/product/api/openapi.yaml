@@ -1,0 +1,565 @@
+openapi: 3.0.3
+info:
+  title: Product Service API
+  description: |
+    Product catalog management service for GoCommerce platform.
+    Handles product CRUD operations, categories, and search functionality.
+  version: 1.0.0
+  contact:
+    name: GoCommerce Team
+    email: support@gocommerce.local
+
+servers:
+  - url: http://localhost:8081
+    description: Local development server
+  - url: http://product-service:8081
+    description: Docker network
+
+tags:
+  - name: Products
+    description: Product catalog operations
+  - name: Categories
+    description: Product category operations
+  - name: Health
+    description: Service health checks
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /v1/products:
+    get:
+      tags: [Products]
+      summary: List products
+      description: Retrieve a paginated list of products with optional filtering
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: category_id
+          in: query
+          description: Filter by category ID
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          description: Search term for product name or description
+          schema:
+            type: string
+            maxLength: 100
+        - name: min_price
+          in: query
+          description: Minimum price in cents
+          schema:
+            type: integer
+            minimum: 0
+        - name: max_price
+          in: query
+          description: Maximum price in cents
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Products]
+      summary: Create a product
+      description: Create a new product in the catalog
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      description: Retrieve a specific product by its ID
+      operationId: getProduct
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    put:
+      tags: [Products]
+      summary: Update product
+      description: Update an existing product
+      operationId: updateProduct
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags: [Products]
+      summary: Delete product
+      description: Soft delete a product (marks as inactive)
+      operationId: deleteProduct
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '204':
+          description: Product deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /v1/categories:
+    get:
+      tags: [Categories]
+      summary: List categories
+      description: Retrieve all product categories
+      operationId: listCategories
+      responses:
+        '200':
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryListResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Categories]
+      summary: Create a category
+      description: Create a new product category
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    ProductIdParam:
+      name: id
+      in: path
+      required: true
+      description: Product ID
+      schema:
+        type: string
+        format: uuid
+
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    # Product Schemas
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - price_cents
+        - currency
+        - stock
+        - active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique product identifier
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Product name
+        description:
+          type: string
+          maxLength: 2000
+          description: Product description
+        price_cents:
+          type: integer
+          minimum: 0
+          description: Price in cents (smallest currency unit)
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          default: USD
+          description: ISO 4217 currency code
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Category ID (if categorized)
+        stock:
+          type: integer
+          minimum: 0
+          description: Available stock quantity
+        active:
+          type: boolean
+          description: Whether product is active/visible
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+          description: Product image URL
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - price_cents
+        - stock
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+        price_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+          default: USD
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        stock:
+          type: integer
+          minimum: 0
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 2000
+        price_cents:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        stock:
+          type: integer
+          minimum: 0
+        active:
+          type: boolean
+        image_url:
+          type: string
+          format: uri
+          nullable: true
+
+    ProductResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Product'
+
+    ProductListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Category Schemas
+    Category:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent category ID for hierarchical categories
+        created_at:
+          type: string
+          format: date-time
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    CategoryResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Category'
+
+    CategoryListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+
+    # Common Schemas
+    Pagination:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_items
+        - total_pages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          description: Current page number
+        page_size:
+          type: integer
+          minimum: 1
+          description: Items per page
+        total_items:
+          type: integer
+          minimum: 0
+          description: Total number of items
+        total_pages:
+          type: integer
+          minimum: 0
+          description: Total number of pages
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Error code (e.g., PRODUCT_NOT_FOUND)
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/Error'
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INVALID_ARGUMENT
+              message: Invalid input provided
+              details:
+                field: price_cents
+                reason: must be non-negative
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: PRODUCT_NOT_FOUND
+              message: Product not found
+              details:
+                product_id: "123e4567-e89b-12d3-a456-426614174000"
+
+    Conflict:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: PRODUCT_ALREADY_EXISTS
+              message: Product with this name already exists
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: An internal server error occurred
