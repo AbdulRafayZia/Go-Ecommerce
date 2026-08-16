@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Cart Service API
+  description: |
+    Cart Service manages shopping carts for users.
+    Features:
+    - Session-based carts with Redis storage
+    - 7-day TTL for inactive carts
+    - Add, update, remove items
+    - Automatic quantity increment for duplicate products
+  version: 1.0.0
+  contact:
+    name: GoCommerce Team
+
+servers:
+  - url: http://localhost:8081
+    description: Local development
+
+tags:
+  - name: carts
+    description: Cart management operations
+  - name: health
+    description: Health check endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Returns the health status of the service
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /carts/{userId}:
+    get:
+      tags:
+        - carts
+      summary: Get user's cart
+      description: Retrieves the shopping cart for a specific user
+      operationId: getCart
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Cart not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - carts
+      summary: Clear cart
+      description: Removes all items from the user's cart
+      operationId: clearCart
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '204':
+          description: Cart cleared successfully
+        '404':
+          description: Cart not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /carts/{userId}/items:
+    post:
+      tags:
+        - carts
+      summary: Add item to cart
+      description: |
+        Adds a new item to the cart or increments quantity if item already exists.
+        If the cart doesn't exist, it will be created automatically.
+      operationId: addItem
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddItemRequest'
+      responses:
+        '200':
+          description: Item added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /carts/{userId}/items/{productId}:
+    put:
+      tags:
+        - carts
+      summary: Update item quantity
+      description: Updates the quantity of a specific item in the cart
+      operationId: updateItemQuantity
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/ProductIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuantityRequest'
+      responses:
+        '200':
+          description: Quantity updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cart or item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - carts
+      summary: Remove item from cart
+      description: Removes a specific item from the user's cart
+      operationId: removeItem
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: Item removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '404':
+          description: Cart or item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      description: Unique identifier for the user
+      schema:
+        type: string
+        minLength: 1
+        example: "user-123"
+
+    ProductIdParam:
+      name: productId
+      in: path
+      required: true
+      description: Unique identifier for the product
+      schema:
+        type: string
+        minLength: 1
+        example: "prod-456"
+
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+          example: healthy
+        service:
+          type: string
+          example: cart-service
+        timestamp:
+          type: string
+          format: date-time
+
+    Cart:
+      type: object
+      required:
+        - user_id
+        - items
+        - total_price
+        - created_at
+        - updated_at
+      properties:
+        user_id:
+          type: string
+          description: User who owns this cart
+          example: "user-123"
+        items:
+          type: array
+          description: List of items in the cart
+          items:
+            $ref: '#/components/schemas/CartItem'
+        item_count:
+          type: integer
+          description: Number of unique items in the cart
+          example: 3
+        total_quantity:
+          type: integer
+          description: Total quantity of all items
+          example: 7
+        total_price:
+          type: integer
+          description: Total price in cents
+          example: 15990
+        created_at:
+          type: string
+          format: date-time
+          description: When the cart was created
+        updated_at:
+          type: string
+          format: date-time
+          description: When the cart was last updated
+
+    CartItem:
+      type: object
+      required:
+        - product_id
+        - name
+        - price_cents
+        - quantity
+        - subtotal
+      properties:
+        product_id:
+          type: string
+          description: Product identifier
+          example: "prod-456"
+        name:
+          type: string
+          description: Product name (cached from product service)
+          example: "Wireless Mouse"
+        price_cents:
+          type: integer
+          description: Price per unit in cents
+          minimum: 0
+          example: 2990
+        quantity:
+          type: integer
+          description: Quantity of this item
+          minimum: 1
+          example: 2
+        subtotal:
+          type: integer
+          description: Subtotal for this item (price_cents * quantity)
+          example: 5980
+        image_url:
+          type: string
+          nullable: true
+          description: URL of the product image
+          example: "https://example.com/images/mouse.jpg"
+
+    AddItemRequest:
+      type: object
+      required:
+        - product_id
+        - name
+        - price_cents
+        - quantity
+      properties:
+        product_id:
+          type: string
+          description: Product identifier
+          minLength: 1
+          example: "prod-456"
+        name:
+          type: string
+          description: Product name
+          minLength: 1
+          example: "Wireless Mouse"
+        price_cents:
+          type: integer
+          description: Price per unit in cents
+          minimum: 0
+          example: 2990
+        quantity:
+          type: integer
+          description: Quantity to add
+          minimum: 1
+          default: 1
+          example: 2
+        image_url:
+          type: string
+          nullable: true
+          description: URL of the product image
+          example: "https://example.com/images/mouse.jpg"
+
+    UpdateQuantityRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          description: New quantity for the item
+          minimum: 1
+          example: 3
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "CART_NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Cart not found for user"
+        details:
+          type: object
+          description: Additional error details
+          nullable: true
