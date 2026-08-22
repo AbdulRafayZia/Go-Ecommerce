@@ -1,0 +1,400 @@
+openapi: 3.0.3
+info:
+  title: Inventory Service API
+  description: |
+    API for managing product inventory and stock reservations.
+
+    This service handles:
+    - Stock availability tracking
+    - Stock reservations for orders
+    - Stock fulfillment and releases
+    - Low stock alerts
+  version: 1.0.0
+  contact:
+    name: GoCommerce Team
+    email: team@gocommerce.com
+
+servers:
+  - url: http://localhost:8083
+    description: Local development server
+  - url: http://inventory-service:8083
+    description: Docker environment
+
+tags:
+  - name: stock
+    description: Stock management operations
+  - name: reservations
+    description: Stock reservation operations
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the service
+      operationId: healthCheck
+      tags:
+        - health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /stocks/{productId}:
+    get:
+      summary: Get stock for a product
+      description: Retrieves stock information (available, reserved) for a specific product
+      operationId: getStock
+      tags:
+        - stock
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Stock information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockResponse'
+        '404':
+          description: Stock not found for product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stocks/{productId}/add:
+    post:
+      summary: Add stock
+      description: Adds stock to a product (restocking operation)
+      operationId: addStock
+      tags:
+        - stock
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddStockRequest'
+      responses:
+        '200':
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stocks/{productId}/set:
+    post:
+      summary: Set stock
+      description: Sets the available stock for a product to a specific value (inventory adjustment)
+      operationId: setStock
+      tags:
+        - stock
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetStockRequest'
+      responses:
+        '200':
+          description: Stock set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /stocks/low:
+    get:
+      summary: List low stock products
+      description: Returns products with stock below the specified threshold
+      operationId: listLowStock
+      tags:
+        - stock
+      parameters:
+        - name: threshold
+          in: query
+          required: false
+          description: Stock threshold (default 10)
+          schema:
+            type: integer
+            minimum: 1
+            default: 10
+      responses:
+        '200':
+          description: Low stock products retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LowStockResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /reservations/{orderId}:
+    get:
+      summary: Get reservations for an order
+      description: Retrieves all stock reservations for a specific order
+      operationId: getReservationsByOrder
+      tags:
+        - reservations
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Order ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reservations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationsResponse'
+        '404':
+          description: No reservations found for order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        service:
+          type: string
+          example: "inventory-service"
+        timestamp:
+          type: string
+          format: date-time
+
+    StockResponse:
+      type: object
+      required:
+        - product_id
+        - available
+        - reserved
+        - total
+        - updated_at
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          description: Product ID
+        available:
+          type: integer
+          description: Available stock (not reserved)
+          minimum: 0
+        reserved:
+          type: integer
+          description: Reserved stock (held for pending orders)
+          minimum: 0
+        total:
+          type: integer
+          description: Total stock (available + reserved)
+          minimum: 0
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    AddStockRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          description: Quantity to add
+          minimum: 1
+          example: 100
+
+    SetStockRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          description: New stock quantity
+          minimum: 0
+          example: 50
+
+    LowStockResponse:
+      type: object
+      required:
+        - products
+        - threshold
+        - count
+      properties:
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockResponse'
+        threshold:
+          type: integer
+          description: Stock threshold used
+          example: 10
+        count:
+          type: integer
+          description: Number of products below threshold
+          example: 5
+
+    ReservationsResponse:
+      type: object
+      required:
+        - order_id
+        - reservations
+        - count
+      properties:
+        order_id:
+          type: string
+          format: uuid
+          description: Order ID
+        reservations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReservationItem'
+        count:
+          type: integer
+          description: Number of reservations
+          example: 3
+
+    ReservationItem:
+      type: object
+      required:
+        - id
+        - order_id
+        - product_id
+        - quantity
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Reservation ID
+        order_id:
+          type: string
+          format: uuid
+          description: Order ID
+        product_id:
+          type: string
+          format: uuid
+          description: Product ID
+        quantity:
+          type: integer
+          description: Reserved quantity
+          minimum: 1
+        status:
+          type: string
+          enum: [pending, fulfilled, cancelled, expired]
+          description: Reservation status
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "STOCK_NOT_FOUND"
+        message:
+          type: string
+          description: Error message
+          example: "Stock not found for product"
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
