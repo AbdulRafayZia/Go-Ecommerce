@@ -275,3 +275,8 @@ func (s *InventoryService) SetStock(ctx context.Context, productID string, quant
 func (s *InventoryService) ListLowStock(ctx context.Context, threshold int) ([]*domain.Stock, error) {
 	return s.stockRepo.ListLowStock(ctx, threshold)
 }
+
+// GetReservationsByOrderID retrieves all reservations for an order
+func (s *InventoryService) GetReservationsByOrderID(ctx context.Context, orderID string) ([]*domain.Reservation, error) {
+	return s.reservationRepo.GetByOrderID(ctx, orderID)
+}

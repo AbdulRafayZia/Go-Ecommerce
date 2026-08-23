@@ -16,7 +16,7 @@ import (
 type Consumer struct {
 	reader           *kafka.Reader
 	inventoryService *application.InventoryService
-	logger           logger.Logger
+	logger           *logger.Logger
 }
 
 // NewConsumer creates a new Kafka consumer
@@ -25,7 +25,7 @@ func NewConsumer(
 	groupID string,
 	topics []string,
 	inventoryService *application.InventoryService,
-	log logger.Logger,
+	log *logger.Logger,
 ) *Consumer {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
