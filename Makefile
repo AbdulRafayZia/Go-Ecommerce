@@ -135,17 +135,139 @@ docker-push: ## Push Docker images to registry
 	done
 
 # Database Migrations
-migrate-create: ## Create a new migration (usage: make migrate-create SERVICE=order NAME=create_orders_table)
+# Default database connection strings for local development
+DB_HOST ?= localhost
+DB_PORT ?= 5432
+DB_USER ?= gocommerce
+DB_PASSWORD ?= gocommerce_dev_password
+DB_SSLMODE ?= disable
+
+PRODUCT_DB ?= product_db
+ORDER_DB ?= order_db
+PAYMENT_DB ?= payment_db
+INVENTORY_DB ?= inventory_db
+
+# Connection string builders
+PRODUCT_DB_URL = "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(PRODUCT_DB)?sslmode=$(DB_SSLMODE)"
+ORDER_DB_URL = "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(ORDER_DB)?sslmode=$(DB_SSLMODE)"
+PAYMENT_DB_URL = "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(PAYMENT_DB)?sslmode=$(DB_SSLMODE)"
+INVENTORY_DB_URL = "postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(INVENTORY_DB)?sslmode=$(DB_SSLMODE)"
+
+# Create new migration
+migrate-create: ## Create a new migration (usage: make migrate-create SERVICE=product NAME=create_products_table)
 	@echo "Creating migration for $(SERVICE)..."
-	migrate create -ext sql -dir services/$(SERVICE)/migrations -seq $(NAME)
+	@cd services/$(SERVICE)/migrations && goose create $(NAME) sql
 
-migrate-up: ## Run migrations up for a service (usage: make migrate-up SERVICE=order)
-	@echo "Running migrations up for $(SERVICE)..."
-	migrate -path services/$(SERVICE)/migrations -database "$(DB_URL)" up
+# ==================== Product Service Migrations ====================
+migrate-product-up: ## Run product service migrations up
+	@echo "Running product service migrations up..."
+	@cd services/product/migrations && goose postgres $(PRODUCT_DB_URL) up
 
-migrate-down: ## Run migrations down for a service (usage: make migrate-down SERVICE=order)
-	@echo "Running migrations down for $(SERVICE)..."
-	migrate -path services/$(SERVICE)/migrations -database "$(DB_URL)" down
+migrate-product-down: ## Rollback product service migrations (1 step)
+	@echo "Rolling back product service migrations..."
+	@cd services/product/migrations && goose postgres $(PRODUCT_DB_URL) down
+
+migrate-product-reset: ## Reset product service migrations (down all, then up)
+	@echo "Resetting product service migrations..."
+	@cd services/product/migrations && goose postgres $(PRODUCT_DB_URL) reset
+	@cd services/product/migrations && goose postgres $(PRODUCT_DB_URL) up
+
+migrate-product-status: ## Show product service migration status
+	@echo "Product service migration status:"
+	@cd services/product/migrations && goose postgres $(PRODUCT_DB_URL) status
+
+# ==================== Order Service Migrations ====================
+migrate-order-up: ## Run order service migrations up
+	@echo "Running order service migrations up..."
+	@cd services/order/migrations && goose postgres $(ORDER_DB_URL) up
+
+migrate-order-down: ## Rollback order service migrations (1 step)
+	@echo "Rolling back order service migrations..."
+	@cd services/order/migrations && goose postgres $(ORDER_DB_URL) down
+
+migrate-order-reset: ## Reset order service migrations (down all, then up)
+	@echo "Resetting order service migrations..."
+	@cd services/order/migrations && goose postgres $(ORDER_DB_URL) reset
+	@cd services/order/migrations && goose postgres $(ORDER_DB_URL) up
+
+migrate-order-status: ## Show order service migration status
+	@echo "Order service migration status:"
+	@cd services/order/migrations && goose postgres $(ORDER_DB_URL) status
+
+# ==================== Payment Service Migrations ====================
+migrate-payment-up: ## Run payment service migrations up
+	@echo "Running payment service migrations up..."
+	@cd services/payment/migrations && goose postgres $(PAYMENT_DB_URL) up
+
+migrate-payment-down: ## Rollback payment service migrations (1 step)
+	@echo "Rolling back payment service migrations..."
+	@cd services/payment/migrations && goose postgres $(PAYMENT_DB_URL) down
+
+migrate-payment-reset: ## Reset payment service migrations (down all, then up)
+	@echo "Resetting payment service migrations..."
+	@cd services/payment/migrations && goose postgres $(PAYMENT_DB_URL) reset
+	@cd services/payment/migrations && goose postgres $(PAYMENT_DB_URL) up
+
+migrate-payment-status: ## Show payment service migration status
+	@echo "Payment service migration status:"
+	@cd services/payment/migrations && goose postgres $(PAYMENT_DB_URL) status
+
+# ==================== Inventory Service Migrations ====================
+migrate-inventory-up: ## Run inventory service migrations up
+	@echo "Running inventory service migrations up..."
+	@cd services/inventory/migrations && goose postgres $(INVENTORY_DB_URL) up
+
+migrate-inventory-down: ## Rollback inventory service migrations (1 step)
+	@echo "Rolling back inventory service migrations..."
+	@cd services/inventory/migrations && goose postgres $(INVENTORY_DB_URL) down
+
+migrate-inventory-reset: ## Reset inventory service migrations (down all, then up)
+	@echo "Resetting inventory service migrations..."
+	@cd services/inventory/migrations && goose postgres $(INVENTORY_DB_URL) reset
+	@cd services/inventory/migrations && goose postgres $(INVENTORY_DB_URL) up
+
+migrate-inventory-status: ## Show inventory service migration status
+	@echo "Inventory service migration status:"
+	@cd services/inventory/migrations && goose postgres $(INVENTORY_DB_URL) status
+
+# ==================== All Services Migrations ====================
+migrate-up-all: ## Run migrations for all services (product, order, payment, inventory)
+	@echo "Running migrations for all services..."
+	@$(MAKE) migrate-product-up
+	@$(MAKE) migrate-order-up
+	@$(MAKE) migrate-payment-up
+	@$(MAKE) migrate-inventory-up
+	@echo "All migrations complete!"
+
+migrate-down-all: ## Rollback migrations for all services (1 step each)
+	@echo "Rolling back migrations for all services..."
+	@$(MAKE) migrate-inventory-down
+	@$(MAKE) migrate-payment-down
+	@$(MAKE) migrate-order-down
+	@$(MAKE) migrate-product-down
+	@echo "All rollbacks complete!"
+
+migrate-reset-all: ## Reset migrations for all services (WARNING: destroys all data)
+	@echo "⚠️  WARNING: This will destroy all data in all databases!"
+	@echo "Resetting migrations for all services..."
+	@$(MAKE) migrate-product-reset
+	@$(MAKE) migrate-order-reset
+	@$(MAKE) migrate-payment-reset
+	@$(MAKE) migrate-inventory-reset
+	@echo "All migrations reset!"
+
+migrate-status-all: ## Show migration status for all services
+	@echo "=== Migration Status for All Services ==="
+	@echo ""
+	@$(MAKE) migrate-product-status
+	@echo ""
+	@$(MAKE) migrate-order-status
+	@echo ""
+	@$(MAKE) migrate-payment-status
+	@echo ""
+	@$(MAKE) migrate-inventory-status
+	@echo ""
+	@echo "=== End of Migration Status ==="
 
 # Kubernetes
 k8s-deploy: ## Deploy to Kubernetes

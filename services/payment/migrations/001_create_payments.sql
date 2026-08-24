@@ -1,3 +1,4 @@
+-- +goose Up
 -- Create payments table
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY,
@@ -38,3 +39,6 @@ COMMENT ON COLUMN payments.failure_reason IS 'Reason for payment failure (if app
 COMMENT ON COLUMN payments.metadata IS 'Additional payment metadata in JSON format';
 COMMENT ON COLUMN payments.created_at IS 'Timestamp when payment was created';
 COMMENT ON COLUMN payments.updated_at IS 'Timestamp when payment was last updated';
+
+-- +goose Down
+DROP TABLE IF EXISTS payments;

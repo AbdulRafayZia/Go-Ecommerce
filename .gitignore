@@ -99,3 +99,8 @@ tmp/
 
 # Test cache
 .test-cache/
+
+# Service logs and PIDs
+logs/
+.service-pids
+*.log
