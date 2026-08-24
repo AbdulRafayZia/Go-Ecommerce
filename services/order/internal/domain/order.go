@@ -59,7 +59,6 @@ func NewOrder(userID, idempotencyKey string, items []*OrderItem) (*Order, error)
 		events:         make([]DomainEvent, 0),
 	}
 
-	// Record domain event
 	order.recordEvent(OrderCreatedEvent{
 		OrderID:        order.ID,
 		UserID:         order.UserID,
