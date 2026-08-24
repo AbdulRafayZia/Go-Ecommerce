@@ -64,6 +64,7 @@ func (p *ReverseProxy) RegisterService(name, baseURL string, timeout time.Durati
 
 // ProxyRequest proxies a request to a backend service
 func (p *ReverseProxy) ProxyRequest(w http.ResponseWriter, r *http.Request, serviceName, targetPath string) {
+	p.logger.Infof("Service to check: %s, targetPath: %s", serviceName, targetPath)
 	service, exists := p.services[serviceName]
 	if !exists {
 		p.logger.Errorf("Service not found: %s", serviceName)

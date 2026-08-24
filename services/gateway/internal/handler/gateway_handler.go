@@ -23,45 +23,94 @@ func NewGatewayHandler(proxy *proxy.ReverseProxy, logger *logger.Logger) *Gatewa
 	}
 }
 
+
+type routeMapping struct {
+	gatewayPrefix string 
+	serviceName   string 
+	servicePrefix string 
+	description   string 
+}
+
+
+func getRouteTable() []routeMapping {
+	return []routeMapping{
+
+		{
+			gatewayPrefix: "/api/products",
+			serviceName:   "product",
+			servicePrefix: "/v1/products",
+			description:   "Product catalog (list, get, create, update, delete products)",
+		},
+		{
+			gatewayPrefix: "/api/categories",
+			serviceName:   "product",
+			servicePrefix: "/v1/categories",
+			description:   "Product categories (list, create categories)",
+		},
+		{
+			gatewayPrefix: "/api/carts",
+			serviceName:   "cart",
+			servicePrefix: "/carts",
+			description:   "Shopping carts (get, add items, update, remove items)",
+		},
+
+		// Order Service - handles order management
+		{
+			gatewayPrefix: "/api/orders",
+			serviceName:   "order",
+			servicePrefix: "/orders",
+			description:   "Orders (list, create, get, update status, cancel)",
+		},
+
+		// Payment Service - handles payment processing
+		{
+			gatewayPrefix: "/api/payments",
+			serviceName:   "payment",
+			servicePrefix: "/payments",
+			description:   "Payments (create, get, capture, cancel, refund)",
+		},
+
+		// Inventory Service - handles stock management
+		{
+			gatewayPrefix: "/api/inventory/stocks",
+			serviceName:   "inventory",
+			servicePrefix: "/stocks",
+			description:   "Inventory stocks (get, add, set stock levels)",
+		},
+		{
+			gatewayPrefix: "/api/inventory/reservations",
+			serviceName:   "inventory",
+			servicePrefix: "/reservations",
+			description:   "Inventory reservations (get reservations by order)",
+		},
+	}
+}
+
 // RouteRequest routes incoming requests to the appropriate backend service
 func (h *GatewayHandler) RouteRequest(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
-	// Determine service and target path based on URL prefix
-	var serviceName, targetPath string
 
-	switch {
-	case strings.HasPrefix(path, "/api/products"):
-		serviceName = "product"
-		targetPath = strings.TrimPrefix(path, "/api")
+	for _, route := range getRouteTable() {
+		if strings.HasPrefix(path, route.gatewayPrefix) {
 
-	case strings.HasPrefix(path, "/api/carts"):
-		serviceName = "cart"
-		targetPath = strings.TrimPrefix(path, "/api")
+			remainingPath := strings.TrimPrefix(path, route.gatewayPrefix)
 
-	case strings.HasPrefix(path, "/api/orders"):
-		serviceName = "order"
-		targetPath = strings.TrimPrefix(path, "/api")
+			targetPath := route.servicePrefix + remainingPath
 
-	case strings.HasPrefix(path, "/api/payments"):
-		serviceName = "payment"
-		targetPath = strings.TrimPrefix(path, "/api")
+			h.logger.Infof("Routing %s %s -> %s (%s)",
+				r.Method,
+				path,
+				route.serviceName+":"+targetPath,
+				route.description,
+			)
 
-	case strings.HasPrefix(path, "/api/inventory"):
-		serviceName = "inventory"
-		targetPath = strings.TrimPrefix(path, "/api")
-
-	default:
-		h.logger.Warnf("No service route found for path: %s", path)
-		writeJSONError(w, http.StatusNotFound, "ROUTE_NOT_FOUND", "No service route found for this path")
-		return
+			h.proxy.ProxyRequest(w, r, route.serviceName, targetPath)
+			return
+		}
 	}
-
-	// Log routing decision
-	h.logger.Infof("Routing %s %s -> %s%s", r.Method, path, serviceName, targetPath)
-
-	// Proxy the request
-	h.proxy.ProxyRequest(w, r, serviceName, targetPath)
+	h.logger.Warnf("No service route found for path: %s", path)
+	writeJSONError(w, http.StatusNotFound, "ROUTE_NOT_FOUND", "No service route found for this path")
 }
 
 // HealthCheck performs health checks on all backend services and returns aggregated status
@@ -73,10 +122,10 @@ func (h *GatewayHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type HealthResponse struct {
-		Status       string                    `json:"status"`
-		Service      string                    `json:"service"`
-		Timestamp    string                    `json:"timestamp"`
-		Dependencies map[string]ServiceHealth  `json:"dependencies,omitempty"`
+		Status       string                   `json:"status"`
+		Service      string                   `json:"service"`
+		Timestamp    string                   `json:"timestamp"`
+		Dependencies map[string]ServiceHealth `json:"dependencies,omitempty"`
 	}
 
 	// Check all backend services

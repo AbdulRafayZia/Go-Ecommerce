@@ -12,13 +12,13 @@ export ENVIRONMENT=development
 export LOG_LEVEL=info
 
 # Order service specific
-export PORT=8083
+export PORT=8082
 export DB_NAME=order_db
 export SERVICE_NAME=order-service
 export OUTBOX_POLL_INTERVAL=5s
 export OUTBOX_BATCH_SIZE=100
 
 # Run the service
-echo "Starting Order Service on port 8083..."
+echo "Starting Order Service on port 8082..."
 echo "Database: $DB_USER@$DB_HOST:$DB_PORT/$DB_NAME"
 ./bin/order

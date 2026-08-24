@@ -104,15 +104,25 @@ func main() {
 	go func() {
 		log.Infof("API Gateway listening on %s", server.Addr)
 		log.Info("Available routes:")
-		log.Info("  - POST /auth/login (login)")
-		log.Info("  - POST /auth/refresh (refresh token)")
-		log.Info("  - POST /auth/logout (logout)")
-		log.Info("  - GET  /health (health check)")
-		log.Info("  - /api/products/* (product service)")
-		log.Info("  - /api/carts/* (cart service)")
-		log.Info("  - /api/orders/* (order service)")
-		log.Info("  - /api/payments/* (payment service)")
-		log.Info("  - /api/inventory/* (inventory service)")
+		log.Info("  Authentication:")
+		log.Info("    - POST /auth/login (login)")
+		log.Info("    - POST /auth/refresh (refresh token)")
+		log.Info("    - POST /auth/logout (logout, requires auth)")
+		log.Info("    - GET  /auth/me (get current user, requires auth)")
+		log.Info("  Health:")
+		log.Info("    - GET  /health (gateway health check)")
+		log.Info("  Public APIs:")
+		log.Info("    - GET  /api/products (list products)")
+		log.Info("    - GET  /api/products/{id} (get product)")
+		log.Info("    - GET  /api/categories (list categories)")
+		log.Info("    - GET  /api/categories/{id} (get category)")
+		log.Info("  Protected APIs (require authentication):")
+		log.Info("    - /api/products/* (create/update/delete - admin only)")
+		log.Info("    - /api/categories/* (create/update/delete - admin only)")
+		log.Info("    - /api/carts/* (cart management)")
+		log.Info("    - /api/orders/* (order management)")
+		log.Info("    - /api/payments/* (payment processing)")
+		log.Info("    - /api/inventory/* (inventory management - admin only)")
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.ErrorWithErr(err, "Server failed to start")
@@ -195,11 +205,15 @@ func setupRouter(
 		r.Get("/auth/me", authHandler.Profile)
 	})
 
-	// Public API routes (no auth required for some product endpoints)
+	// Public API routes (no auth required for browsing)
 	r.Group(func(r chi.Router) {
 		// Public product browsing
 		r.Get("/api/products", gatewayHandler.RouteRequest)
 		r.Get("/api/products/{productId}", gatewayHandler.RouteRequest)
+
+		// Public category browsing
+		r.Get("/api/categories", gatewayHandler.RouteRequest)
+		r.Get("/api/categories/{categoryId}", gatewayHandler.RouteRequest)
 	})
 
 	// Protected API routes (authentication required)
@@ -212,6 +226,11 @@ func setupRouter(
 			r.Post("/api/products", gatewayHandler.RouteRequest)
 			r.Put("/api/products/{productId}", gatewayHandler.RouteRequest)
 			r.Delete("/api/products/{productId}", gatewayHandler.RouteRequest)
+
+			// Category management (admin only)
+			r.Post("/api/categories", gatewayHandler.RouteRequest)
+			r.Put("/api/categories/{categoryId}", gatewayHandler.RouteRequest)
+			r.Delete("/api/categories/{categoryId}", gatewayHandler.RouteRequest)
 		})
 
 		// Cart routes
