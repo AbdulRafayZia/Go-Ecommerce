@@ -47,7 +47,7 @@ func LoadConfig() *Config {
 		DBPassword:         getEnv("DB_PASSWORD", "postgres"),
 		DBName:             getEnv("DB_NAME", "order_db"),
 		DBSSLMode:          getEnv("DB_SSLMODE", "disable"),
-		KafkaBrokers:       getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
+		KafkaBrokers:       getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9094"}),
 		OutboxPollInterval: getEnvAsDuration("OUTBOX_POLL_INTERVAL", 5*time.Second),
 		OutboxBatchSize:    getEnvAsInt("OUTBOX_BATCH_SIZE", 100),
 		OTLPEndpoint:       getEnv("OTLP_ENDPOINT", "localhost:4317"),

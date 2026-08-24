@@ -9,17 +9,13 @@ import (
 	"gocommerce/services/gateway/internal/auth"
 )
 
-// contextKey is a custom type for context keys to avoid collisions
 type contextKey string
 
 const (
-	// ClaimsContextKey is the context key for JWT claims
 	ClaimsContextKey contextKey = "jwt_claims"
-	// UserIDContextKey is the context key for user ID
 	UserIDContextKey contextKey = "user_id"
 )
 
-// AuthMiddleware creates a middleware that validates JWT tokens
 func AuthMiddleware(jwtManager *auth.JWTManager, log *logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +61,6 @@ func AuthMiddleware(jwtManager *auth.JWTManager, log *logger.Logger) func(http.H
 	}
 }
 
-// OptionalAuthMiddleware is similar to AuthMiddleware but doesn't fail if token is missing
 func OptionalAuthMiddleware(jwtManager *auth.JWTManager, log *logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +96,6 @@ func OptionalAuthMiddleware(jwtManager *auth.JWTManager, log *logger.Logger) fun
 	}
 }
 
-// RequireRole creates a middleware that checks if the user has a specific role
 func RequireRole(role string, log *logger.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,24 +119,19 @@ func RequireRole(role string, log *logger.Logger) func(http.Handler) http.Handle
 	}
 }
 
-// RequireAdmin is a convenience middleware that requires admin role
 func RequireAdmin(log *logger.Logger) func(http.Handler) http.Handler {
 	return RequireRole("admin", log)
 }
-
-// GetClaimsFromContext retrieves JWT claims from the request context
 func GetClaimsFromContext(ctx context.Context) (*auth.Claims, bool) {
 	claims, ok := ctx.Value(ClaimsContextKey).(*auth.Claims)
 	return claims, ok
 }
 
-// GetUserIDFromContext retrieves user ID from the request context
 func GetUserIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(UserIDContextKey).(string)
 	return userID, ok
 }
 
-// writeJSONError writes a JSON error response
 func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

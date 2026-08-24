@@ -45,7 +45,7 @@ func LoadConfig() *Config {
 		DBPassword:          getEnv("DB_PASSWORD", "postgres"),
 		DBName:              getEnv("DB_NAME", "payment_db"),
 		DBSSLMode:           getEnv("DB_SSLMODE", "disable"),
-		KafkaBrokers:        getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
+		KafkaBrokers:        getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9094"}),
 		ProviderFailureRate: getEnvAsFloat("PROVIDER_FAILURE_RATE", 0.05), // 5% default failure rate
 		OTLPEndpoint:        getEnv("OTLP_ENDPOINT", "localhost:4317"),
 		ServiceName:         getEnv("SERVICE_NAME", "payment-service"),

@@ -50,8 +50,9 @@ func NewInMemoryUserStore() *InMemoryUserStore {
 	// Password for all default users: "password123"
 	defaultPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 
+	// Use fixed UUIDs for default users to ensure consistency across restarts
 	store.users["admin"] = &User{
-		ID:           uuid.New().String(),
+		ID:           "00000000-0000-0000-0000-000000000001",
 		Username:     "admin",
 		Email:        "admin@gocommerce.com",
 		PasswordHash: string(defaultPassword),
@@ -60,7 +61,7 @@ func NewInMemoryUserStore() *InMemoryUserStore {
 	}
 
 	store.users["user"] = &User{
-		ID:           uuid.New().String(),
+		ID:           "00000000-0000-0000-0000-000000000002",
 		Username:     "user",
 		Email:        "user@gocommerce.com",
 		PasswordHash: string(defaultPassword),
@@ -69,7 +70,7 @@ func NewInMemoryUserStore() *InMemoryUserStore {
 	}
 
 	store.users["testuser"] = &User{
-		ID:           uuid.New().String(),
+		ID:           "00000000-0000-0000-0000-000000000003",
 		Username:     "testuser",
 		Email:        "test@gocommerce.com",
 		PasswordHash: string(defaultPassword),

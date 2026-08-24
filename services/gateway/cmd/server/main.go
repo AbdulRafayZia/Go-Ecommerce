@@ -185,12 +185,14 @@ func setupRouter(
 		r.Use(middleware.StrictRateLimit())
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/refresh", authHandler.RefreshToken)
+
 	})
 
 	// Authenticated auth routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(jwtManager, log))
 		r.Post("/auth/logout", authHandler.Logout)
+		r.Get("/auth/me", authHandler.Profile)
 	})
 
 	// Public API routes (no auth required for some product endpoints)

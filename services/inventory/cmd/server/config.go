@@ -49,7 +49,7 @@ func LoadConfig() *Config {
 		DBPassword:                 getEnv("DB_PASSWORD", "postgres"),
 		DBName:                     getEnv("DB_NAME", "inventory_db"),
 		DBSSLMode:                  getEnv("DB_SSLMODE", "disable"),
-		KafkaBrokers:               getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
+		KafkaBrokers:               getEnvAsSlice("KAFKA_BROKERS", []string{"localhost:9094"}),
 		KafkaConsumerGroup:         getEnv("KAFKA_CONSUMER_GROUP", "inventory-service"),
 		KafkaTopics:                getEnvAsSlice("KAFKA_TOPICS", []string{"order.created", "order.paid", "order.cancelled"}),
 		ReservationExpiryDuration:  getEnvAsDuration("RESERVATION_EXPIRY_DURATION", 30*time.Minute),

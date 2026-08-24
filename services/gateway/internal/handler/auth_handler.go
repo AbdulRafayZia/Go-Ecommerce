@@ -7,6 +7,7 @@ import (
 
 	"gocommerce/pkg/logger"
 	"gocommerce/services/gateway/internal/auth"
+	"gocommerce/services/gateway/internal/middleware"
 )
 
 // AuthHandler handles authentication endpoints
@@ -159,6 +160,29 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	// The client is responsible for deleting the token
 	h.logger.Info("User logged out")
 	w.WriteHeader(http.StatusNoContent)
+}
+func (h *AuthHandler) Profile(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context using the middleware helper
+	userId, ok := middleware.GetUserIDFromContext(r.Context())
+	if !ok {
+		h.logger.Error("User ID not found in context")
+		writeJSONError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get user information")
+		return
+	}
+	user, err := h.userStore.GetByID(userId)
+	if err != nil {
+		h.logger.ErrorWithErr(err, "Failed to get user info")
+		writeJSONError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get user information")
+		return
+	}
+	response := UserInfo{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+		Roles:    user.Roles,
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 // HealthCheck returns health status
